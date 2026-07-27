@@ -32,18 +32,84 @@ if "is_completed" not in st.session_state:
 system_key = os.getenv("GROQ_API_KEY", "")
 active_api_key = st.session_state.user_api_key.strip() if st.session_state.user_api_key.strip() else system_key
 
-# Custom CSS Styling
 st.markdown("""
 <style>
+    /* Hide Default Header */
     header[data-testid="stHeader"] { display: none !important; }
     .main .block-container { padding-top: 1rem !important; padding-bottom: 2rem !important; }
-    .stApp { background: radial-gradient(circle at 50% 0%, #0a192f 0%, #060c1a 60%, #02060e 100%) !important; color: #f8fafc !important; }
+    
+    /* Background Styling */
+    .stApp { 
+        background: radial-gradient(circle at 50% 0%, #0a192f 0%, #060c1a 60%, #02060e 100%) !important; 
+        color: #f8fafc !important; 
+    }
     p, span, label, div[data-testid="stMarkdownContainer"] { color: #e2e8f0 !important; }
-    .stApp h1, .gold-title { color: #fbbf24 !important; font-size: 3.5rem !important; font-weight: 800 !important; text-align: center !important; text-shadow: 0 0 35px rgba(251, 191, 36, 0.5) !important; margin-bottom: 4px !important; }
-    h2, h3 { color: #fbbf24 !important; font-weight: 700 !important; }
-    div[data-testid="stFileUploader"] { background: rgba(10, 25, 47, 0.7) !important; border: 1px solid rgba(168, 85, 247, 0.35) !important; border-radius: 16px !important; padding: 16px !important; }
-    div.stButton > button { background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #f59e0b 100%) !important; color: #030712 !important; border-radius: 12px !important; padding: 16px 28px !important; font-weight: 800 !important; font-size: 18px !important; }
-    div.stButton > button:hover { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%) !important; color: #ffffff !important; }
+    
+    /* Gold Glow Title & Headings */
+    .gold-title { 
+        color: #fbbf24 !important; 
+        font-size: 3.5rem !important; 
+        font-weight: 800 !important; 
+        text-align: center !important; 
+        text-shadow: 0 0 35px rgba(251, 191, 36, 0.6) !important; 
+        margin-bottom: 4px !important; 
+    }
+    .gold-glow-heading {
+        color: #fbbf24 !important;
+        font-size: 2.2rem !important;
+        font-weight: 800 !important;
+        text-shadow: 0 0 25px rgba(251, 191, 36, 0.7) !important;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* File Upload Box - Interactive Purple Glow on Click/Hover */
+    div[data-testid="stFileUploader"] { 
+        background: rgba(10, 25, 47, 0.7) !important; 
+        border: 2px solid rgba(168, 85, 247, 0.35) !important; 
+        border-radius: 16px !important; 
+        padding: 16px !important; 
+        transition: all 0.3s ease-in-out !important;
+    }
+    div[data-testid="stFileUploader"]:hover, 
+    div[data-testid="stFileUploader"]:focus-within { 
+        border-color: #a855f7 !important; 
+        box-shadow: 0 0 25px rgba(168, 85, 247, 0.8) !important; 
+        background: rgba(15, 23, 42, 0.9) !important; 
+    }
+
+    /* Text Input Box - Interactive Purple Glow on Click/Hover */
+    div[data-testid="stTextInput"] input { 
+        background: rgba(10, 25, 47, 0.8) !important; 
+        border: 2px solid rgba(168, 85, 247, 0.35) !important; 
+        color: #f8fafc !important; 
+        border-radius: 12px !important; 
+        padding: 12px 16px !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+    div[data-testid="stTextInput"] input:focus, 
+    div[data-testid="stTextInput"] input:hover { 
+        border-color: #a855f7 !important; 
+        box-shadow: 0 0 25px rgba(168, 85, 247, 0.8) !important; 
+        background: rgba(15, 23, 42, 0.95) !important; 
+    }
+
+    /* Primary Button Styling */
+    div.stButton > button { 
+        background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #f59e0b 100%) !important; 
+        color: #030712 !important; 
+        border-radius: 12px !important; 
+        padding: 16px 28px !important; 
+        font-weight: 800 !important; 
+        font-size: 18px !important; 
+        border: none !important;
+        transition: all 0.3s ease !important;
+    }
+    div.stButton > button:hover { 
+        background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #22c55e 100%) !important; 
+        color: #ffffff !important; 
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.6) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,7 +131,6 @@ def show_api_limit_popup():
             st.success("API Key saved!")
             st.rerun()
 
-# Header
 st.markdown("""
 <div style="text-align: center; padding: 5px 0px 20px 0px;">
     <h1 class="gold-title">✍️ Inkscribe AI</h1>
@@ -73,8 +138,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 1. File Upload
-st.header("1. Upload Study Materials")
+# 1. Upload Section
+st.markdown('<div class="gold-glow-heading">1. Upload Study Materials</div>', unsafe_allow_html=True)
+
 u_col1, u_col2 = st.columns(2)
 
 with u_col1:
@@ -82,11 +148,9 @@ with u_col1:
 with u_col2:
     other_files = st.file_uploader("📦 Upload Textbooks, PPTs or ZIPs", type=['pdf', 'pptx', 'ppt', 'zip'], accept_multiple_files=True)
 
-st.markdown("---")
+st.markdown("<br>", unsafe_allow_html=True)
 
-# 2. Single Click Generation
-st.header("2. One-Click Exam Ready Notes Generation")
-
+# Single-Click Button
 if st.button("🚀 GENERATE ALL 5 UNITS NOTES & PDFs (SINGLE CLICK)", use_container_width=True):
     all_uploads = (syllabus_files or []) + (other_files or [])
     
@@ -96,40 +160,35 @@ if st.button("🚀 GENERATE ALL 5 UNITS NOTES & PDFs (SINGLE CLICK)", use_contai
         show_api_limit_popup()
     else:
         try:
-            # Step A: Parse Documents
             status_text = st.empty()
             progress_bar = st.progress(0)
             
-            status_text.markdown("### 🔍 Step 1/2: Indexing Uploaded Documents...")
+            status_text.markdown("### 🔍 Indexing Uploaded Materials...")
             parsed_docs = parse_all_uploaded_files(all_uploads)
             st.session_state.rag_engine = RAGEngine()
             st.session_state.rag_engine.add_documents(parsed_docs)
             progress_bar.progress(15)
 
-            # Step B: Auto Generation Unit 1 to 5 Loop
             st.session_state.generated_notes_dict = {}
             st.session_state.pdf_path_dict = {}
 
             for unit_num in range(1, 6):
-                status_text.markdown(f"### ⚡ Step 2/2: Generating Unit {unit_num} of 5 (2M & 16M Notes + PDF)...")
+                status_text.markdown(f"### ⚡ Generating Unit {unit_num} of 5 (2M & 16M Notes + PDF)...")
                 
-                # AI Notes Generation
                 unit_notes = generate_notes_for_single_unit(
                     api_key=active_api_key,
                     rag_engine=st.session_state.rag_engine,
                     unit_number=unit_num
                 )
 
-                # PDF Build
                 pdf_filename = f"Inkscribe_Unit_{unit_num}_Exam_Notes.pdf"
                 pdf_path = build_single_combined_pdf(unit_notes, output_filename=pdf_filename)
 
                 st.session_state.generated_notes_dict[unit_num] = unit_notes
                 st.session_state.pdf_path_dict[unit_num] = pdf_path
 
-                # Update progress bar (15% to 100%)
                 progress_bar.progress(15 + (unit_num * 17))
-                time.sleep(2)  # Pause to respect Groq Rate Limit
+                time.sleep(1.5)
 
             st.session_state.is_completed = True
             status_text.markdown("### 🎉 All 5 Units Successfully Generated!")
@@ -140,11 +199,10 @@ if st.button("🚀 GENERATE ALL 5 UNITS NOTES & PDFs (SINGLE CLICK)", use_contai
             st.error(f"Error occurred: {str(e)}")
             show_api_limit_popup()
 
-# 3. Output Downloads Display
 if st.session_state.is_completed and st.session_state.pdf_path_dict:
-    st.markdown("## 📥 Download Your Generated Unit PDFs")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="gold-glow-heading">📥 Download Generated Unit PDFs</div>', unsafe_allow_html=True)
     
-    # Display 5 Download Buttons in 2 or 3 Columns
     d_cols = st.columns(5)
     for idx, unit_num in enumerate(range(1, 6)):
         with d_cols[idx]:
@@ -159,18 +217,17 @@ if st.session_state.is_completed and st.session_state.pdf_path_dict:
                         use_container_width=True
                     )
 
-    st.markdown("---")
-
-    # Preview Accordion
-    st.markdown("### 📄 Preview Generated Notes")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="gold-glow-heading">📄 Preview Notes</div>', unsafe_allow_html=True)
     for unit_num in range(1, 6):
         with st.expander(f"Unit {unit_num} Notes Content"):
             st.markdown(st.session_state.generated_notes_dict.get(unit_num, ""))
 
 st.markdown("---")
 
-# 4. AI Doubt Tutor
-st.header("3. 🤖 Interactive AI Doubt Tutor")
+# 2. Doubt Tutor Section
+st.markdown('<div class="gold-glow-heading">🤖 Interactive AI Doubt Tutor</div>', unsafe_allow_html=True)
+
 user_doubt = st.text_input("Ask your doubt question here:", placeholder="e.g., Explain step 2 of Unit 1...")
 
 if st.button("💡 Clear Doubt", use_container_width=True):
