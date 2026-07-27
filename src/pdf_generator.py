@@ -1,40 +1,48 @@
 import os
 import re
+import unicodedata
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 
-def clean_text_for_pdf(text: str) -> str:
-    """Replaces unicode smart quotes, dashes, and strips unencodable emojis for clean PDF generation."""
+def sanitize_text_for_pdf(text: str) -> str:
+    """
+    100% Unicode & Smart-Quote proof sanitizer.
+    Converts smart quotes (\u201c, \u201d, etc.) and strips unencodable emojis/symbols.
+    """
     if not text:
         return ""
     
-    # Common Unicode character replacements
+    # 1. Explicitly swap smart quotes, apostrophes, and dashes
     replacements = {
-        '“': '"', '”': '"', '‘': "'", '’': "'",
-        '—': '-', '–': '-', '…': '...',
-        '•': '*', '🎯': '', '✍️': '', '⚡': '',
-        '🚀': '', '📄': '', '📦': '', '💡': '',
-        '🚨': '', '📥': '', '✅': '', '📌': '',
-        '™': '', '®': '', '©': ''
+        '\u201c': '"',  # Left double quote (“)
+        '\u201d': '"',  # Right double quote (”)
+        '\u2018': "'",  # Left single quote (‘)
+        '\u2019': "'",  # Right single quote (’)
+        '\u2013': '-',  # En dash (–)
+        '\u2014': '-',  # Em dash (—)
+        '\u2026': '...',# Ellipsis (…)
+        '\u2022': '*',  # Bullet point (•)
     }
     
-    for key, val in replacements.items():
-        text = text.replace(key, val)
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
     
-    # Convert markdown bold **text** to HTML bold <b>text</b> for ReportLab Paragraphs
-    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    # 2. Normalize and strip any remaining non-ASCII characters safely
+    normalized = unicodedata.normalize('NFKD', text)
+    clean_ascii = normalized.encode('ascii', 'ignore').decode('ascii')
     
-    # Strip any remaining non-ASCII characters to guarantee no ASCII codec encoding errors
-    return text.encode('ascii', 'ignore').decode('ascii')
+    # 3. Convert Markdown Bold (**text**) to ReportLab HTML Bold (<b>text</b>)
+    formatted = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_ascii)
+    
+    return formatted
 
 
 def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inkscribe_Exam_Notes.pdf") -> str:
-    """Converts sanitized markdown text into a styled PDF document."""
+    """Generates a clean PDF from notes markdown text."""
     pdf_path = os.path.join(os.getcwd(), output_filename)
     
-    # Page setup
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=letter,
@@ -46,13 +54,12 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
     
     styles = getSampleStyleSheet()
     
-    # Custom Typography Styles
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
+        fontSize=18,
+        leading=22,
         textColor=colors.HexColor("#1e1b4b"),
         spaceAfter=12
     )
@@ -61,10 +68,10 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
         'Header1',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=15,
+        fontSize=14,
         leading=18,
         textColor=colors.HexColor("#b45309"),
-        spaceBefore=14,
+        spaceBefore=12,
         spaceAfter=8
     )
     
@@ -72,7 +79,7 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
         'Header2',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=12,
+        fontSize=11,
         leading=15,
         textColor=colors.HexColor("#15803d"),
         spaceBefore=10,
@@ -91,8 +98,8 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
 
     story = []
     
-    # Clean text first
-    safe_markdown = clean_text_for_pdf(notes_markdown)
+    # Sanitize markdown content before parsing
+    safe_markdown = sanitize_text_for_pdf(notes_markdown)
     lines = safe_markdown.split('\n')
 
     for line in lines:
