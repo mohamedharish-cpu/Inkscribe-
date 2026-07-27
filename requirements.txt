@@ -1,4 +1,7 @@
 streamlit
+python-dotenv
 groq
-pypdf
 reportlab
+chromadb
+pypdf
+python-pptx
