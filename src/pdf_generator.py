@@ -6,33 +6,31 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 
 def clean_text_for_pdf(text: str) -> str:
-    """
-    100% Strict ASCII Sanitizer.
-    Replaces smart quotes/dashes and strips ALL non-ASCII characters to prevent PDF encoding errors.
-    """
+    """Strictly sanitizes text to pure ASCII so ReportLab never encounters encoding errors."""
     if not text:
         return ""
     
-    # 1. Swap common Unicode quotes and dashes to standard ASCII equivalents
+    # 1. Swap common smart quotes, apostrophes, dashes, and bullet symbols
     replacements = {
         '“': '"', '”': '"', '‘': "'", '’': "'",
         '—': '-', '–': '-', '…': '...', '•': '*',
-        '™': '', '®': '', '©': ''
+        '\u201c': '"', '\u201d': '"', '\u2018': "'", '\u2019': "'",
+        '\u2013': '-', '\u2014': '-', '\u2026': '...', '\u2022': '*'
     }
-    for key, val in replacements.items():
-        text = text.replace(key, val)
-        
+    for orig, repl in replacements.items():
+        text = text.replace(orig, repl)
+
     # 2. Convert Markdown Bold (**text**) to ReportLab HTML Bold (<b>text</b>)
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-    
-    # 3. STRICT ASCII FILTER: Remove any remaining non-ASCII character (ordinal > 127)
-    clean_ascii = re.sub(r'[^\x00-\x7F]+', '', text)
-    
-    return clean_ascii
+
+    # 3. ABSOLUTE STRICT ASCII CLEANING (Strips any hidden non-ASCII characters safely)
+    text = text.encode('ascii', errors='ignore').decode('ascii')
+
+    return text
 
 
 def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inkscribe_Exam_Notes.pdf") -> str:
-    """Generates a clean, styled PDF from markdown text."""
+    """Builds a clean PDF document from formatted text."""
     pdf_path = os.path.join(os.getcwd(), output_filename)
     
     doc = SimpleDocTemplate(
@@ -90,30 +88,29 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
 
     story = []
     
-    # Clean text to 100% strict ASCII
-    safe_markdown = clean_text_for_pdf(notes_markdown)
-    lines = safe_markdown.split('\n')
+    # Process text line by line with strict ASCII filter
+    raw_lines = notes_markdown.split('\n')
 
-    for line in lines:
-        line_str = line.strip()
-        if not line_str:
+    for line in raw_lines:
+        line_clean = clean_text_for_pdf(line.strip())
+        if not line_clean:
             story.append(Spacer(1, 4))
             continue
             
-        if line_str.startswith("# "):
-            clean_line = line_str.replace("# ", "")
-            story.append(Paragraph(clean_line, title_style))
+        if line_clean.startswith("# "):
+            clean_title = line_clean.replace("# ", "")
+            story.append(Paragraph(clean_title, title_style))
             story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#a855f7"), spaceAfter=10))
-        elif line_str.startswith("## "):
-            clean_line = line_str.replace("## ", "")
-            story.append(Paragraph(clean_line, h1_style))
-        elif line_str.startswith("### ") or line_str.startswith("#### "):
-            clean_line = re.sub(r'^#+\s*', '', line_str)
-            story.append(Paragraph(clean_line, h2_style))
-        elif line_str.startswith("---"):
+        elif line_clean.startswith("## "):
+            clean_h1 = line_clean.replace("## ", "")
+            story.append(Paragraph(clean_h1, h1_style))
+        elif line_clean.startswith("### ") or line_clean.startswith("#### "):
+            clean_h2 = re.sub(r'^#+\s*', '', line_clean)
+            story.append(Paragraph(clean_h2, h2_style))
+        elif line_clean.startswith("---"):
             story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#cbd5e1"), spaceBefore=8, spaceAfter=8))
         else:
-            story.append(Paragraph(line_str, body_style))
+            story.append(Paragraph(line_clean, body_style))
 
     doc.build(story)
     return pdf_path
