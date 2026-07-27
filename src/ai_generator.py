@@ -19,7 +19,6 @@ def generate_notes_for_all_units(api_key: str, rag_engine) -> str:
     all_notes = []
 
     for unit_title in units:
-        # Retrieve context specific to this unit from RAG Vector Store
         context = rag_engine.query_context(f"{unit_title} key concepts syllabus pyq questions", top_k=8)
         safe_context = context[:5000] if context else "Standard Academic Syllabus Data"
 
