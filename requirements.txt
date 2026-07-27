@@ -4,4 +4,5 @@ groq
 reportlab
 chromadb
 pypdf
+pdfplumber
 python-pptx
