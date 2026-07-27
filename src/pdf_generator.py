@@ -1,36 +1,34 @@
 import os
 import re
+import unicodedata
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 
 def clean_text_for_pdf(text: str) -> str:
-    """Strictly sanitizes text to pure ASCII so ReportLab never encounters encoding errors."""
+    """100% Failsafe ASCII Sanitizer to prevent any ReportLab encoding crash."""
     if not text:
         return ""
     
-    # 1. Swap common smart quotes, apostrophes, dashes, and bullet symbols
-    replacements = {
-        '“': '"', '”': '"', '‘': "'", '’': "'",
-        '—': '-', '–': '-', '…': '...', '•': '*',
-        '\u201c': '"', '\u201d': '"', '\u2018': "'", '\u2019': "'",
-        '\u2013': '-', '\u2014': '-', '\u2026': '...', '\u2022': '*'
-    }
-    for orig, repl in replacements.items():
-        text = text.replace(orig, repl)
-
-    # 2. Convert Markdown Bold (**text**) to ReportLab HTML Bold (<b>text</b>)
+    # 1. Force replacement of all smart quotes, dashes, and ellipses
+    text = re.sub(r'[\u201c\u201d\u201e\u201f\u275d\u275e]', '"', text)  # Smart Double Quotes
+    text = re.sub(r'[\u2018\u2019\u201a\u201b\u275b\u275c]', "'", text)  # Smart Single Quotes
+    text = re.sub(r'[\u2013\u2014\u2015]', '-', text)                  # Dashes
+    text = re.sub(r'[\u2022\u2023\u2043\u204c\u204d]', '*', text)                 # Bullets
+    text = text.replace('…', '...')
+    
+    # 2. Convert Markdown Bold (**text**) to HTML Bold (<b>text</b>)
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-
-    # 3. ABSOLUTE STRICT ASCII CLEANING (Strips any hidden non-ASCII characters safely)
-    text = text.encode('ascii', errors='ignore').decode('ascii')
-
-    return text
+    
+    # 3. Forcibly strip ANY character outside standard ASCII range (0-127)
+    normalized = unicodedata.normalize('NFKD', text)
+    clean_ascii_bytes = normalized.encode('ascii', errors='ignore')
+    return clean_ascii_bytes.decode('ascii')
 
 
 def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inkscribe_Exam_Notes.pdf") -> str:
-    """Builds a clean PDF document from formatted text."""
+    """Generates a clean PDF guaranteed not to throw encoding errors."""
     pdf_path = os.path.join(os.getcwd(), output_filename)
     
     doc = SimpleDocTemplate(
@@ -88,11 +86,12 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
 
     story = []
     
-    # Process text line by line with strict ASCII filter
-    raw_lines = notes_markdown.split('\n')
+    # First, run total clean on entire text block
+    safe_markdown = clean_text_for_pdf(notes_markdown)
+    raw_lines = safe_markdown.split('\n')
 
     for line in raw_lines:
-        line_clean = clean_text_for_pdf(line.strip())
+        line_clean = line.strip()
         if not line_clean:
             story.append(Spacer(1, 4))
             continue
