@@ -1,46 +1,38 @@
 import os
 import re
-import unicodedata
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 
-def sanitize_text_for_pdf(text: str) -> str:
+def clean_text_for_pdf(text: str) -> str:
     """
-    100% Unicode & Smart-Quote proof sanitizer.
-    Converts smart quotes (\u201c, \u201d, etc.) and strips unencodable emojis/symbols.
+    100% Strict ASCII Sanitizer.
+    Replaces smart quotes/dashes and strips ALL non-ASCII characters to prevent PDF encoding errors.
     """
     if not text:
         return ""
     
-    # 1. Explicitly swap smart quotes, apostrophes, and dashes
+    # 1. Swap common Unicode quotes and dashes to standard ASCII equivalents
     replacements = {
-        '\u201c': '"',  # Left double quote (“)
-        '\u201d': '"',  # Right double quote (”)
-        '\u2018': "'",  # Left single quote (‘)
-        '\u2019': "'",  # Right single quote (’)
-        '\u2013': '-',  # En dash (–)
-        '\u2014': '-',  # Em dash (—)
-        '\u2026': '...',# Ellipsis (…)
-        '\u2022': '*',  # Bullet point (•)
+        '“': '"', '”': '"', '‘': "'", '’': "'",
+        '—': '-', '–': '-', '…': '...', '•': '*',
+        '™': '', '®': '', '©': ''
     }
+    for key, val in replacements.items():
+        text = text.replace(key, val)
+        
+    # 2. Convert Markdown Bold (**text**) to ReportLab HTML Bold (<b>text</b>)
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     
-    for unicode_char, ascii_char in replacements.items():
-        text = text.replace(unicode_char, ascii_char)
+    # 3. STRICT ASCII FILTER: Remove any remaining non-ASCII character (ordinal > 127)
+    clean_ascii = re.sub(r'[^\x00-\x7F]+', '', text)
     
-    # 2. Normalize and strip any remaining non-ASCII characters safely
-    normalized = unicodedata.normalize('NFKD', text)
-    clean_ascii = normalized.encode('ascii', 'ignore').decode('ascii')
-    
-    # 3. Convert Markdown Bold (**text**) to ReportLab HTML Bold (<b>text</b>)
-    formatted = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_ascii)
-    
-    return formatted
+    return clean_ascii
 
 
 def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inkscribe_Exam_Notes.pdf") -> str:
-    """Generates a clean PDF from notes markdown text."""
+    """Generates a clean, styled PDF from markdown text."""
     pdf_path = os.path.join(os.getcwd(), output_filename)
     
     doc = SimpleDocTemplate(
@@ -98,8 +90,8 @@ def build_single_combined_pdf(notes_markdown: str, output_filename: str = "Inksc
 
     story = []
     
-    # Sanitize markdown content before parsing
-    safe_markdown = sanitize_text_for_pdf(notes_markdown)
+    # Clean text to 100% strict ASCII
+    safe_markdown = clean_text_for_pdf(notes_markdown)
     lines = safe_markdown.split('\n')
 
     for line in lines:
