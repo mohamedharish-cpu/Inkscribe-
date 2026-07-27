@@ -1,8 +1,12 @@
 from groq import Groq
 
 def generate_notes_for_all_units(api_key: str, rag_engine) -> str:
-    """Iterates through all 5 units, querying RAG for each unit and compiling detailed notes."""
-    client = Groq(api_key=api_key, timeout=45.0)
+    """
+    Iterates through all 5 units and generates:
+    - 7 to 10 Two-Mark (2M) Questions & Answers
+    - 5 to 7 Sixteen-Mark (16M) Questions & Answers with detailed breakdowns
+    """
+    client = Groq(api_key=api_key, timeout=60.0)
     
     units = [
         "Unit 1: Introduction & Core Fundamentals",
@@ -14,66 +18,74 @@ def generate_notes_for_all_units(api_key: str, rag_engine) -> str:
 
     all_notes = []
 
-    for unit_idx, unit_title in enumerate(units, start=1):
-        # Query context specifically for this unit
-        context = rag_engine.query_context(f"{unit_title} concepts components questions", top_k=6)
-        safe_context = context[:4000] if context else "Standard Syllabus Topics"
+    for unit_title in units:
+        # Retrieve context specific to this unit from RAG Vector Store
+        context = rag_engine.query_context(f"{unit_title} key concepts syllabus pyq questions", top_k=8)
+        safe_context = context[:5000] if context else "Standard Academic Syllabus Data"
 
         prompt = f"""
-        You are an expert Anna University / Autonomous Engineering Examiner.
-        Generate COMPREHENSIVE, DISTINCTION-LEVEL EXAM NOTES for:
-        
-        {unit_title}
-        
-        Context Data from uploaded files:
+        You are a Chief Senior University Examiner creating an official Question Bank.
+        Generate Distinction-Level Exam Notes for: **{unit_title}**
+
+        Context Data from Uploaded Files:
         {safe_context}
 
-        STRICT EXAM FORMAT REQUIREMENTS:
+        STRICT GENERATION RULES FOR THIS UNIT:
 
+        ================================================================
         # {unit_title}
+        ================================================================
 
-        ## 1. Core Definitions & Important Terms
-        - Provide 3 to 4 key definitions with technical terms in bold (`**`).
+        ## PART A: SHORT ANSWER QUESTIONS (Provide EXACTLY 7 TO 10 Questions)
+        Generate 7 to 10 high-yield 2-Mark Questions with concise, 3-line technical answers.
+        Highlight important technical terms using `**bold**`.
 
-        ## 2. High-Yield 2-Mark Questions & Answers
-        - Question 1 & Question 2 with detailed 3-line answers.
+        Format for Part A:
+        ### Q1. [2-Mark Question Title]
+        **Answer:** [Detailed 2 to 3 line technical explanation]
 
-        ## 3. High-Yield 16-Mark Question (COMPREHENSIVE ESSAY TYPE ANSWER)
-        Write a complete, long-form, highly detailed 16-mark answer covering:
+        ---
 
-        ### 16-Mark Question: [Write a major essay topic from this unit]
+        ## PART B: BIG ESSAY QUESTIONS (Provide EXACTLY 5 TO 7 Questions)
+        Generate 5 to 7 detailed 16-Mark Questions with complete, multi-section answers.
+        
+        For EACH of the 16-Mark Questions, you MUST use the following format:
 
-        #### A. Introduction & Theoretical Principle
-        - Provide a multi-paragraph, detailed theoretical explanation of the concept, purpose, and significance.
+        ### 16-MARK QUESTION [Number]: [Question Title]
 
-        #### B. Architecture & Component Block Breakdown
-        - Do NOT use ASCII box diagrams with `+---+` symbols.
-        - Instead, list each functional block clearly with numbers, describing its inputs, outputs, and internal logic in detail.
+        #### 1. Introduction & Theoretical Principle
+        Provide a detailed explanation of the core concept, purpose, and working theory.
 
-        #### C. Step-by-Step Working Mechanism / Derivation / Operation
-        - Write a minimum of 6 sequential steps explaining the operation/derivation in depth.
+        #### 2. Block / Architecture Explanation
+        Describe all internal blocks, inputs, outputs, and control signals step-by-step using bullet points (Do NOT use raw ASCII box diagrams like +---+).
 
-        #### D. Key Technical Features & Comparison Table
-        - Provide a markdown table comparing key features or modes.
+        #### 3. Step-by-Step Working Mechanism / Derivation
+        Provide minimum 5 sequential steps explaining how it executes or derives.
 
-        #### E. Real-World Engineering Applications & Advantages
-        - List 4 practical applications and advantages.
+        #### 4. Key Features & Summary
+        List key characteristics, timing parameters, or comparison points.
 
-        Make sure the 16-mark answer is extremely thorough, rich in technical terms, and ready for distinction-level grading.
+        #### 5. Real-World Applications & Advantages
+        List practical engineering applications and main advantages.
+
+        ================================================================
+        Ensure all 7-10 (2M) and 5-7 (16M) questions are generated completely without leaving anything out.
         """
 
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You write exhaustive, high-yield university exam answers with maximum technical clarity."},
+                {
+                    "role": "system", 
+                    "content": "You are a university senior examiner drafting detailed, high-yield exam question banks with strict counts."
+                },
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=3000
+            max_tokens=4000
         )
 
-        unit_output = response.choices[0].message.content
-        all_notes.append(unit_output)
+        all_notes.append(response.choices[0].message.content)
 
     return "\n\n---\n\n".join(all_notes)
 
