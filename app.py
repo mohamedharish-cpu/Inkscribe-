@@ -20,6 +20,8 @@ if "user_api_key" not in st.session_state:
     st.session_state.user_api_key = ""
 if "rag_engine" not in st.session_state:
     st.session_state.rag_engine = None
+if "current_unit" not in st.session_state:
+    st.session_state.current_unit = 1
 if "generated_notes_dict" not in st.session_state:
     st.session_state.generated_notes_dict = {}
 if "pdf_path_dict" not in st.session_state:
@@ -67,7 +69,7 @@ def show_api_limit_popup():
 st.markdown("""
 <div style="text-align: center; padding: 5px 0px 20px 0px;">
     <h1 class="gold-title">✍️ Inkscribe AI</h1>
-    <p style="color: #cbd5e1 !important; font-size: 1.2rem;">Automated Exam-Ready Notes Generator (Unit-by-Unit Download ⚡)</p>
+    <p style="color: #cbd5e1 !important; font-size: 1.2rem;">Automated High-Yield Exam Notes Generator ⚡</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -89,63 +91,79 @@ if st.button("🔍 Process & Index Uploaded Documents", use_container_width=True
             parsed_docs = parse_all_uploaded_files(all_uploads)
             st.session_state.rag_engine = RAGEngine()
             num_chunks = st.session_state.rag_engine.add_documents(parsed_docs)
+            st.session_state.current_unit = 1  # Reset to Unit 1
             st.success(f"Successfully processed & indexed {num_chunks} content chunks!")
 
 st.markdown("---")
 
-# 2. Unit Generation Section
-st.header("2. Select & Generate Notes (Unit-by-Unit)")
+# 2. Sequential Unit Generation Section
+st.header("2. Exam Notes Generation Flow")
 
 if st.session_state.rag_engine is None:
-    st.info("💡 Please upload and click 'Process & Index Uploaded Documents' above to start generating notes.")
+    st.info("💡 Please upload study materials above and click 'Process & Index Uploaded Documents' to start!")
 else:
-    selected_unit = st.selectbox(
-        "Choose Unit to Generate:",
-        options=[1, 2, 3, 4, 5],
-        format_func=lambda x: f"Unit {x}: Generate 7-10 Two-Marks & 5-7 Sixteen-Marks"
-    )
+    unit_num = st.session_state.current_unit
+    
+    # Progress Header
+    st.markdown(f"### 📌 Current Step: **Unit {unit_num} of 5**")
 
-    if st.button(f"🚀 Generate Unit {selected_unit} Full Notes & PDF", use_container_width=True):
-        if not active_api_key:
-            show_api_limit_popup()
-        else:
-            try:
-                with st.spinner(f"Generating Unit {selected_unit} High-Yield 2M & 16M Notes..."):
-                    unit_notes = generate_notes_for_single_unit(
-                        api_key=active_api_key,
-                        rag_engine=st.session_state.rag_engine,
-                        unit_number=selected_unit
-                    )
-                    
-                    pdf_filename = f"Inkscribe_Unit_{selected_unit}_Exam_Notes.pdf"
-                    pdf_path = build_single_combined_pdf(unit_notes, output_filename=pdf_filename)
-                    
-                    # Store in session state
-                    st.session_state.generated_notes_dict[selected_unit] = unit_notes
-                    st.session_state.pdf_path_dict[selected_unit] = pdf_path
-                    
-                st.balloons()
-            except Exception as e:
-                st.error(f"Error occurred: {str(e)}")
-                show_api_limit_popup()
+    # Check if current unit is already generated
+    if unit_num in st.session_state.generated_notes_dict:
+        st.success(f"✅ Unit {unit_num} Notes & PDF are Ready!")
 
-    # Display generated notes for selected unit
-    if selected_unit in st.session_state.generated_notes_dict:
-        st.markdown(f"### ✅ Unit {selected_unit} Notes Ready!")
-        
-        pdf_path = st.session_state.pdf_path_dict[selected_unit]
+        # Download Button
+        pdf_path = st.session_state.pdf_path_dict[unit_num]
         if os.path.exists(pdf_path):
             with open(pdf_path, "rb") as f:
                 st.download_button(
-                    label=f"📥 Download Unit {selected_unit} PDF Notes",
+                    label=f"📥 Download Unit {unit_num} PDF Notes",
                     data=f,
-                    file_name=f"Inkscribe_Unit_{selected_unit}_Notes.pdf",
+                    file_name=f"Inkscribe_Unit_{unit_num}_Notes.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
-        
-        with st.expander(f"📄 View Unit {selected_unit} Generated Notes Text", expanded=True):
-            st.markdown(st.session_state.generated_notes_dict[selected_unit])
+
+        # Expandable Preview
+        with st.expander(f"📄 View Unit {unit_num} Generated Notes Preview", expanded=False):
+            st.markdown(st.session_state.generated_notes_dict[unit_num])
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # NEXT BUTTON logic
+        if unit_num < 5:
+            if st.button(f"➡️ Proceed to Unit {unit_num + 1} (Next)", use_container_width=True):
+                st.session_state.current_unit += 1
+                st.rerun()
+        else:
+            st.balloons()
+            st.success("🎉 All 5 Units successfully generated! All PDF downloads are complete.")
+            if st.button("🔄 Start Over / Regenerate Unit 1", use_container_width=True):
+                st.session_state.current_unit = 1
+                st.rerun()
+
+    else:
+        # Generate Button for Current Unit
+        if st.button(f"🚀 Generate Unit {unit_num} Notes & PDF", use_container_width=True):
+            if not active_api_key:
+                show_api_limit_popup()
+            else:
+                try:
+                    with st.spinner(f"Generating Unit {unit_num} Notes (7-10 Two-Marks & 5-7 Sixteen-Marks)..."):
+                        unit_notes = generate_notes_for_single_unit(
+                            api_key=active_api_key,
+                            rag_engine=st.session_state.rag_engine,
+                            unit_number=unit_num
+                        )
+
+                        pdf_filename = f"Inkscribe_Unit_{unit_num}_Exam_Notes.pdf"
+                        pdf_path = build_single_combined_pdf(unit_notes, output_filename=pdf_filename)
+
+                        st.session_state.generated_notes_dict[unit_num] = unit_notes
+                        st.session_state.pdf_path_dict[unit_num] = pdf_path
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error occurred: {str(e)}")
+                    show_api_limit_popup()
 
 st.markdown("---")
 
