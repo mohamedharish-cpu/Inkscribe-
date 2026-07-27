@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from src.document_parser import parse_all_uploaded_files
 from src.rag_engine import RAGEngine
-from src.ai_generator import generate_exam_notes_for_unit, clear_user_doubt
+from src.ai_generator import generate_notes_for_all_units, clear_user_doubt
 from src.pdf_generator import build_single_combined_pdf
 
 load_dotenv()
@@ -120,7 +120,7 @@ with media_col2:
 
 st.markdown("---")
 
-if st.button("📄 Generate Single Combined Handwritten PDF Notes", use_container_width=True):
+if st.button("📄 Generate All 5 Units Full Deep 16-Mark PDF Notes", use_container_width=True):
     if not active_api_key:
         show_api_limit_popup()
     else:
@@ -133,26 +133,23 @@ if st.button("📄 Generate Single Combined Handwritten PDF Notes", use_containe
             st.error("Please upload at least one study material (PDF, PPTX, or ZIP) to proceed!")
         else:
             try:
-                with st.spinner("Step 1/3: Extracting text from uploaded files..."):
+                with st.spinner("Step 1/3: Parsing and extracting text from uploaded files..."):
                     parsed_docs = parse_all_uploaded_files(all_uploads)
 
-                with st.spinner("Step 2/3: Indexing documents into Vector Search..."):
+                with st.spinner("Step 2/3: Indexing documents into Vector Database..."):
                     st.session_state.rag_engine = RAGEngine()
                     num_chunks = st.session_state.rag_engine.add_documents(parsed_docs)
-                    st.success(f"Successfully processed and indexed {num_chunks} document chunks!")
+                    st.success(f"Indexed {num_chunks} document chunks across your syllabus!")
 
-                with st.spinner("Step 3/3: Groq LLaMA-3 generating notes at lightning speed ⚡..."):
-                    context = st.session_state.rag_engine.query_context("All Units Core Concepts", top_k=10)
+                with st.spinner("Step 3/3: Generating full 5-Unit detailed exam notes with 16-Mark depth ⚡..."):
                     
-                    notes = generate_exam_notes_for_unit(
+                    full_notes = generate_notes_for_all_units(
                         api_key=active_api_key,
-                        unit_name="Complete Syllabus High-Yield Notes",
-                        context=context,
-                        mode="🏆 Topper Mode (90%+ Distinction)"
+                        rag_engine=st.session_state.rag_engine
                     )
-                    st.session_state.generated_notes = notes
-
-                    pdf_file_path = build_single_combined_pdf(notes)
+                    
+                    st.session_state.generated_notes = full_notes
+                    pdf_file_path = build_single_combined_pdf(full_notes)
                     st.session_state.pdf_path = pdf_file_path
 
                 st.balloons()
@@ -167,19 +164,19 @@ if st.session_state.generated_notes:
     if st.session_state.pdf_path and os.path.exists(st.session_state.pdf_path):
         with open(st.session_state.pdf_path, "rb") as pdf_file:
             st.download_button(
-                label="📥 Download Single Combined Handwritten PDF Notes",
+                label="📥 Download Complete 5-Unit High-Yield PDF Notes",
                 data=pdf_file,
-                file_name="Inkscribe_Exam_Handwritten_Notes.pdf",
+                file_name="Inkscribe_Complete_5_Units_Exam_Notes.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
 
-    with st.expander("📄 Click to View Generated Color-Coded Markdown Notes", expanded=True):
+    with st.expander("📄 Click to View Generated Full Notes", expanded=True):
         st.markdown(st.session_state.generated_notes)
 
 st.markdown("---")
 st.header("3. 🤖 Interactive AI Doubt Tutor (Groq Powered)")
-st.caption("Have doubts on any topic, derivation, or formula? Type your question below and Inkscribe AI will explain it step-by-step!")
+st.caption("Have doubts on any topic, derivation, or formula? Type your question below:")
 
 user_doubt = st.text_input("Ask your doubt question here:", placeholder="e.g., Explain step 2 of the derivation or give a real-world analogy...")
 
