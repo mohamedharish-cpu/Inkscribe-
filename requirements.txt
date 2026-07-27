@@ -1,7 +1,4 @@
 streamlit
-google-generativeai
-pdfplumber
-python-pptx
-chromadb
+groq
+pypdf
 reportlab
-python-dotenv
